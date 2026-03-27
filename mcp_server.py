@@ -77,8 +77,9 @@ async def health_check():
 
     try:
         # Probar conexión con API key
+        # Probar conexión con API key usando endpoint que existe
         response = await embed_manager.client.get(
-            f"{os.getenv('QDRANT_URL')}/health",
+            f"{os.getenv('QDRANT_URL')}/collections",
             headers={"Authorization": f"Bearer {os.getenv('QDRANT_API_KEY')}"}
         )
         qdrant_status = response.status_code == 200

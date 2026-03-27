@@ -4,30 +4,30 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${MCP_PORT}:${MCP_PORT}"
     environment:
-      OLLAMA_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: nomic-embed-text
-      OLLAMA_ENABLED: "true"
-      OLLAMA_PRIORITY: "10"
-      OLLAMA_TIMEOUT: "30"
+      OLLAMA_URL: ${OLLAMA_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED}
+      OLLAMA_PRIORITY: ${OLLAMA_PRIORITY}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT}
 
-      QDRANT_URL: http://host.docker.internal:6333
-      QDRANT_COLLECTION: memories
+      QDRANT_URL: ${QDRANT_URL}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION}
 
-      POSTGRES_HOST: 5.189.130.64
-      POSTGRES_PORT: "5432"
-      POSTGRES_USER: ts_admin
-      POSTGRES_PASSWORD: Trading123!@#
-      POSTGRES_DB: memory_hub
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
 
-      MCP_PORT: "8000"
-      MCP_HOST: "0.0.0.0"
-      MCP_API_KEY: mcp-secure-key-trading-bot-32chars-min
-      LOG_LEVEL: INFO
+      MCP_PORT: ${MCP_PORT}
+      MCP_HOST: ${MCP_HOST}
+      MCP_API_KEY: ${MCP_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL}
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${MCP_PORT}/health"]
       interval: 10s
       timeout: 5s
       retries: 3

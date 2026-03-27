@@ -31,7 +31,7 @@ qdrant_client = AsyncQdrantClient(
 
 def get_db():
     conn = psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "localhost"),
+        host=os.getenv("POSTGRES_HOST", "timescaledb"),
         port=os.getenv("POSTGRES_PORT", "5432"),
         user=os.getenv("POSTGRES_USER", "postgres"),
         password=os.getenv("POSTGRES_PASSWORD", ""),

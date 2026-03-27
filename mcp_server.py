@@ -25,7 +25,8 @@ app = FastAPI(
 
 embed_manager = EmbedServiceManager()
 qdrant_client = AsyncQdrantClient(
-    url=os.getenv("QDRANT_URL", "http://localhost:6333")
+    url=os.getenv("QDRANT_URL", "http://localhost:6333"),
+    api_key=os.getenv("QDRANT_API_KEY")
 )
 
 def get_db():

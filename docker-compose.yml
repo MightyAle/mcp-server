@@ -12,7 +12,7 @@ services:
       OLLAMA_PRIORITY: ${OLLAMA_PRIORITY}
       OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT}
 
-      QDRANT_URL: http://database-qdrant-mcqhmx-qdrant-1:6333
+      QDRANT_URL: ${QDRANT_URL}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION}
 
       POSTGRES_HOST: ${POSTGRES_HOST}
@@ -26,10 +26,6 @@ services:
       MCP_API_KEY: ${MCP_API_KEY}
       LOG_LEVEL: ${LOG_LEVEL}
 
-    networks:
-      - default
-      - database-qdrant-mcqhmx
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${MCP_PORT}/health"]
       interval: 10s
@@ -37,7 +33,3 @@ services:
       retries: 3
 
     restart: unless-stopped
-
-networks:
-  database-qdrant-mcqhmx:
-    external: true

@@ -225,10 +225,9 @@ async def memory_search(
 
         query_embedding = await embed_manager.embed(request.query)
 
-        # Usar scroll en lugar de search directo
-        results = await qdrant_client.search(
+        response = await qdrant_client.query_points(
             collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=request.limit,
             query_filter={
                 "must": [
@@ -239,6 +238,7 @@ async def memory_search(
                 ]
             } if request.project else None
         )
+        results = response.points
 
         memories = []
         if results:
@@ -424,14 +424,15 @@ async def memory_search(
     """Search memories by semantic similarity."""
     query_embedding = await embed_manager.embed(query)
 
-    results = await qdrant_client.search(
+    response = await qdrant_client.query_points(
         collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
-        query_vector=query_embedding,
+        query=query_embedding,
         limit=limit,
         query_filter={
             "must": [{"key": "project", "match": {"value": project}}]
         } if project else None,
     )
+    results = response.points
 
     memories = [
         {

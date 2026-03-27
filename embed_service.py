@@ -1,4 +1,3 @@
-cat > embed_service.py << 'EOF'
 import os
 import asyncio
 import httpx
@@ -177,4 +176,3 @@ class EmbedServiceManager:
     async def close(self):
         """Close HTTP client"""
         await self.client.aclose()
-EOF

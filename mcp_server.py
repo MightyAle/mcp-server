@@ -1,4 +1,3 @@
-cat > mcp_server.py << 'EOF'
 import os
 import uuid
 import json
@@ -357,4 +356,3 @@ if __name__ == "__main__":
         port=int(os.getenv("MCP_PORT", "8000")),
         log_level="info"
     )
-EOF

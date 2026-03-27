@@ -86,7 +86,7 @@ class MemorySearchRequest(BaseModel):
     query: str
     project: Optional[str] = None
     limit: int = 5
-    min_score: float = 0.5
+    min_score: float = 0.35
 
 class MemoryDeleteRequest(BaseModel):
     memory_id: str
@@ -421,7 +421,7 @@ async def memory_search(
     query: str,
     project: Optional[str] = None,
     limit: int = 5,
-    min_score: float = 0.5,
+    min_score: float = 0.35,
 ) -> dict:
     """Search memories by semantic similarity."""
     query_embedding = await embed_manager.embed(query)

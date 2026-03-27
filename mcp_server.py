@@ -28,6 +28,7 @@ qdrant_client = AsyncQdrantClient(
     url=os.getenv("QDRANT_URL", "http://localhost:6333"),
     api_key=os.getenv("QDRANT_API_KEY"),
     timeout=30.0,
+    prefer_grpc=False,
     check_compatibility=False
 )
 

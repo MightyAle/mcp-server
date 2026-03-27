@@ -19,7 +19,7 @@ from embed_service import EmbedServiceManager
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("Memory Hub")
+mcp = FastMCP("Memory Hub", host="0.0.0.0")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

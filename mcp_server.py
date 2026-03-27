@@ -515,7 +515,7 @@ async def memory_delete(memory_id: str) -> dict:
     return {"success": True, "memory_id": memory_id}
 
 
-app.mount("/mcp", mcp.streamable_http_app())
+app.mount("/", mcp.streamable_http_app())
 
 # ────────────────────────────────────────────────────────────────────────────
 

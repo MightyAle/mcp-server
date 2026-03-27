@@ -1,0 +1,39 @@
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: nomic-embed-text
+      OLLAMA_ENABLED: "true"
+      OLLAMA_PRIORITY: "10"
+      OLLAMA_TIMEOUT: "30"
+
+      QDRANT_URL: http://host.docker.internal:6333
+      QDRANT_COLLECTION: memories
+
+      POSTGRES_HOST: 5.189.130.64
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ts_admin
+      POSTGRES_PASSWORD: Trading123!@#
+      POSTGRES_DB: memory_hub
+
+      MCP_PORT: "8000"
+      MCP_HOST: "0.0.0.0"
+      MCP_API_KEY: mcp-secure-key-trading-bot-32chars-min
+      LOG_LEVEL: INFO
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+    restart: unless-stopped
+EOF

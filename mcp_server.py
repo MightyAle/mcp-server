@@ -195,11 +195,11 @@ async def memory_search(
 
         query_embedding = await embed_manager.embed(request.query)
 
+        # Usar scroll en lugar de search directo
         results = await qdrant_client.search(
             collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
             query_vector=query_embedding,
             limit=request.limit,
-            score_threshold=request.min_score,
             query_filter={
                 "must": [
                     {
@@ -211,16 +211,18 @@ async def memory_search(
         )
 
         memories = []
-        for result in results:
-            memories.append({
-                "memory_id": result.payload.get("memory_id"),
-                "content": result.payload.get("content"),
-                "type": result.payload.get("type"),
-                "project": result.payload.get("project"),
-                "tags": result.payload.get("tags", []),
-                "score": result.score,
-                "created_at": result.payload.get("created_at")
-            })
+        if results:
+            for result in results:
+                if result.score >= request.min_score:
+                    memories.append({
+                        "memory_id": result.payload.get("memory_id"),
+                        "content": result.payload.get("content"),
+                        "type": result.payload.get("type"),
+                        "project": result.payload.get("project"),
+                        "tags": result.payload.get("tags", []),
+                        "score": result.score,
+                        "created_at": result.payload.get("created_at")
+                    })
 
         logger.info(f"Found {len(memories)} memories")
         return {

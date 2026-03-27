@@ -27,7 +27,6 @@ embed_manager = EmbedServiceManager()
 qdrant_client = AsyncQdrantClient(
     url=os.getenv("QDRANT_URL", "http://localhost:6333"),
     api_key=os.getenv("QDRANT_API_KEY"),
-    verify_ssl=True,
     timeout=30.0,
     check_compatibility=False
 )

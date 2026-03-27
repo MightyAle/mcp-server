@@ -455,49 +455,6 @@ async def memory_search(
 
 
 @mcp.tool()
-async def memory_list(
-    project: Optional[str] = None,
-    type_filter: Optional[str] = None,
-    limit: int = 10,
-) -> dict:
-    """List memories from PostgreSQL, optionally filtered by project or type."""
-    conn = get_db()
-    cursor = conn.cursor(cursor_factory=DictCursor)
-
-    query = "SELECT * FROM memories WHERE 1=1"
-    params = []
-    if project:
-        query += " AND project = %s"
-        params.append(project)
-    if type_filter:
-        query += " AND type = %s"
-        params.append(type_filter)
-    query += " ORDER BY created_at DESC LIMIT %s"
-    params.append(limit)
-
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    memories = [
-        {
-            "memory_id": row["id"],
-            "content": row["content"],
-            "type": row["type"],
-            "project": row["project"],
-            "tags": row["tags"],
-            "assistant": row["assistant"],
-            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-        }
-        for row in rows
-    ]
-
-    logger.info(f"[MCP] Listed {len(memories)} memories")
-    return {"success": True, "count": len(memories), "memories": memories}
-
-
-@mcp.tool()
 async def memory_delete(memory_id: str) -> dict:
     """Delete a memory by its ID from Qdrant and PostgreSQL."""
     await qdrant_client.delete(

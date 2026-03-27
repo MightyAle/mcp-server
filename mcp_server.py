@@ -24,12 +24,15 @@ app = FastAPI(
 )
 
 embed_manager = EmbedServiceManager()
+_qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
+_qdrant_parsed = __import__("urllib.parse", fromlist=["urlparse"]).urlparse(_qdrant_url)
 qdrant_client = AsyncQdrantClient(
-    url=os.getenv("QDRANT_URL", "http://localhost:6333"),
+    host=_qdrant_parsed.hostname,
+    port=_qdrant_parsed.port or (443 if _qdrant_parsed.scheme == "https" else 6333),
+    https=_qdrant_parsed.scheme == "https",
     api_key=os.getenv("QDRANT_API_KEY"),
     timeout=30.0,
     prefer_grpc=False,
-    check_compatibility=False
 )
 
 def get_db():

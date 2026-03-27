@@ -2,6 +2,7 @@ import os
 import uuid
 import json
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional, List
 
@@ -18,10 +19,38 @@ from embed_service import EmbedServiceManager
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
+mcp = FastMCP("Memory Hub")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("MCP Server starting up")
+    try:
+        collection_name = os.getenv("QDRANT_COLLECTION", "memories")
+        collections = await qdrant_client.get_collections()
+        collection_exists = any(c.name == collection_name for c in collections.collections)
+        if not collection_exists:
+            logger.info(f"Creating Qdrant collection: {collection_name}")
+            await qdrant_client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(size=768, distance=Distance.COSINE)
+            )
+        else:
+            logger.info(f"Qdrant collection exists: {collection_name}")
+    except Exception as e:
+        logger.error(f"Failed to verify Qdrant: {str(e)}")
+
+    mcp.streamable_http_app()  # initialize session manager
+    async with mcp._session_manager.run():
+        yield
+
+    logger.info("MCP Server shutting down")
+    await embed_manager.close()
+
 app = FastAPI(
     title="MCP Server - Memory Hub",
     version="1.0.0",
-    description="MCP Server for semantic memory management"
+    description="MCP Server for semantic memory management",
+    lifespan=lifespan,
 )
 
 embed_manager = EmbedServiceManager()
@@ -334,34 +363,7 @@ async def memory_delete(
         logger.error(f"Error deleting memory: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.on_event("startup")
-async def startup():
-    logger.info("MCP Server starting up")
-
-    try:
-        collection_name = os.getenv("QDRANT_COLLECTION", "memories")
-        collections = await qdrant_client.get_collections()
-        collection_exists = any(c.name == collection_name for c in collections.collections)
-
-        if not collection_exists:
-            logger.info(f"Creating Qdrant collection: {collection_name}")
-            await qdrant_client.create_collection(
-                collection_name=collection_name,
-                vectors_config=VectorParams(size=768, distance=Distance.COSINE)
-            )
-        else:
-            logger.info(f"Qdrant collection exists: {collection_name}")
-    except Exception as e:
-        logger.error(f"Failed to verify Qdrant: {str(e)}")
-
-@app.on_event("shutdown")
-async def shutdown():
-    logger.info("MCP Server shutting down")
-    await embed_manager.close()
-
 # ── MCP Protocol ────────────────────────────────────────────────────────────
-
-mcp = FastMCP("Memory Hub")
 
 @mcp.tool()
 async def memory_save(

@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, Header, Depends
+from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
@@ -357,6 +358,166 @@ async def startup():
 async def shutdown():
     logger.info("MCP Server shutting down")
     await embed_manager.close()
+
+# ── MCP Protocol ────────────────────────────────────────────────────────────
+
+mcp = FastMCP("Memory Hub")
+
+@mcp.tool()
+async def memory_save(
+    content: str,
+    type: str,
+    project: str,
+    tags: Optional[List[str]] = None,
+    assistant: str = "mcp_server",
+) -> dict:
+    """Save a memory to the hub with semantic embedding."""
+    memory_id = str(uuid.uuid4())
+    now = datetime.utcnow()
+
+    embedding = await embed_manager.embed(content)
+
+    point = PointStruct(
+        id=hash(memory_id) % (2**63),
+        vector=embedding,
+        payload={
+            "memory_id": memory_id,
+            "content": content,
+            "type": type,
+            "project": project,
+            "tags": tags or [],
+            "assistant": assistant,
+            "created_at": now.isoformat(),
+        },
+    )
+    await qdrant_client.upsert(
+        collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
+        points=[point],
+    )
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """INSERT INTO memories (id, content, type, project, tags, assistant,
+           embedding_provider, embedding_model, created_at, updated_at)
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (memory_id, content, type, project, json.dumps(tags or []), assistant,
+         "ollama", os.getenv("OLLAMA_MODEL", "nomic-embed-text"), now, now),
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    logger.info(f"[MCP] Memory saved: {memory_id}")
+    return {"success": True, "memory_id": memory_id, "timestamp": now.isoformat()}
+
+
+@mcp.tool()
+async def memory_search(
+    query: str,
+    project: Optional[str] = None,
+    limit: int = 5,
+    min_score: float = 0.5,
+) -> dict:
+    """Search memories by semantic similarity."""
+    query_embedding = await embed_manager.embed(query)
+
+    results = await qdrant_client.search(
+        collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
+        query_vector=query_embedding,
+        limit=limit,
+        query_filter={
+            "must": [{"key": "project", "match": {"value": project}}]
+        } if project else None,
+    )
+
+    memories = [
+        {
+            "memory_id": r.payload.get("memory_id"),
+            "content": r.payload.get("content"),
+            "type": r.payload.get("type"),
+            "project": r.payload.get("project"),
+            "tags": r.payload.get("tags", []),
+            "score": r.score,
+            "created_at": r.payload.get("created_at"),
+        }
+        for r in results
+        if r.score >= min_score
+    ]
+
+    logger.info(f"[MCP] Search '{query}' → {len(memories)} results")
+    return {"success": True, "count": len(memories), "query": query, "memories": memories}
+
+
+@mcp.tool()
+async def memory_list(
+    project: Optional[str] = None,
+    type_filter: Optional[str] = None,
+    limit: int = 10,
+) -> dict:
+    """List memories from PostgreSQL, optionally filtered by project or type."""
+    conn = get_db()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+
+    query = "SELECT * FROM memories WHERE 1=1"
+    params = []
+    if project:
+        query += " AND project = %s"
+        params.append(project)
+    if type_filter:
+        query += " AND type = %s"
+        params.append(type_filter)
+    query += " ORDER BY created_at DESC LIMIT %s"
+    params.append(limit)
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    memories = [
+        {
+            "memory_id": row["id"],
+            "content": row["content"],
+            "type": row["type"],
+            "project": row["project"],
+            "tags": row["tags"],
+            "assistant": row["assistant"],
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        }
+        for row in rows
+    ]
+
+    logger.info(f"[MCP] Listed {len(memories)} memories")
+    return {"success": True, "count": len(memories), "memories": memories}
+
+
+@mcp.tool()
+async def memory_delete(memory_id: str) -> dict:
+    """Delete a memory by its ID from Qdrant and PostgreSQL."""
+    await qdrant_client.delete(
+        collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
+        points_selector={"has": [{"key": "memory_id", "match": {"value": memory_id}}]},
+    )
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM memories WHERE id = %s", (memory_id,))
+    cursor.execute(
+        "INSERT INTO audit_log (time, action, memory_id, details) VALUES (%s,%s,%s,%s)",
+        (datetime.utcnow(), "DELETE", memory_id, json.dumps({"deleted": True})),
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    logger.info(f"[MCP] Memory deleted: {memory_id}")
+    return {"success": True, "memory_id": memory_id}
+
+
+app.mount("/mcp", mcp.streamable_http_app())
+
+# ────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn

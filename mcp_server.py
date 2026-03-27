@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Header, Depends
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue, FilterSelector
 import psycopg2
 from psycopg2.extras import DictCursor
 
@@ -332,7 +332,9 @@ async def memory_delete(
 
         await qdrant_client.delete(
             collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
-            points_selector={"has": [{"key": "memory_id", "match": {"value": request.memory_id}}]}
+            points_selector=FilterSelector(
+                filter=Filter(must=[FieldCondition(key="memory_id", match=MatchValue(value=request.memory_id))])
+            )
         )
 
         conn = get_db()
@@ -500,7 +502,9 @@ async def memory_delete(memory_id: str) -> dict:
     """Delete a memory by its ID from Qdrant and PostgreSQL."""
     await qdrant_client.delete(
         collection_name=os.getenv("QDRANT_COLLECTION", "memories"),
-        points_selector={"has": [{"key": "memory_id", "match": {"value": memory_id}}]},
+        points_selector=FilterSelector(
+            filter=Filter(must=[FieldCondition(key="memory_id", match=MatchValue(value=memory_id))])
+        ),
     )
 
     conn = get_db()

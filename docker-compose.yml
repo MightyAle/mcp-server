@@ -13,7 +13,6 @@ services:
       OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT}
 
       QDRANT_URL: ${QDRANT_URL}
-      QDRANT_API_KEY: ${QDRANT_API_KEY}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION}
 
       POSTGRES_HOST: ${POSTGRES_HOST}
@@ -27,6 +26,9 @@ services:
       MCP_API_KEY: ${MCP_API_KEY}
       LOG_LEVEL: ${LOG_LEVEL}
 
+    networks:
+      - dokploy-network
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${MCP_PORT}/health"]
       interval: 10s
@@ -34,3 +36,7 @@ services:
       retries: 3
 
     restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
